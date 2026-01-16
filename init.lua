@@ -76,7 +76,7 @@ Kickstart Guide:
     Feel free to delete them once you know what you're doing, but they should serve as a guide
     for when you are first encountering a few different constructs in your Neovim config.
 
-If you experience any errors while trying to install kickstart, run `:checkhealth` for more info.
+f you experience any errors while trying to install kickstart, run `:checkhealth` for more info.
 
 I hope you enjoy your Neovim journey,
 - TJ
@@ -85,14 +85,36 @@ P.S. You can delete this when you're done too. It's your config now! :)
 --]]
 
 -- Set <space> as the leader key
+-- dap configuration --
+
+-- ===============================
+-- DAP CONFIGURATION (GLOBAL)
+-- ===============================
+-- Always show sign column
+vim.opt.signcolumn = 'yes'
+
+-- DAP breakpoint signs
+vim.fn.sign_define('DapBreakpoint', {
+  text = '●',
+  texthl = 'DiagnosticSignError',
+  linehl = '',
+  numhl = '',
+})
+
+vim.fn.sign_define('DapStopped', {
+  text = '▶',
+  texthl = 'DiagnosticSignWarn',
+  linehl = 'Visual',
+  numhl = '',
+})
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
-
+require 'custom.keymaps'
 -- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.have_nerd_font = false
-
+vim.g.python3_host_prog = '/Users/wowfinstack/.venvs/nvim/bin/python3'
 -- [[ Setting options ]]
 -- See `:help vim.o`
 -- NOTE: You can change these options as you wish!
@@ -114,13 +136,14 @@ vim.o.showmode = false
 --  Schedule the setting after `UiEnter` because it can increase startup-time.
 --  Remove this option if you want your OS clipboard to remain independent.
 --  See `:help 'clipboard'`
-vim.schedule(function()
-  vim.o.clipboard = 'unnamedplus'
-end)
+-- vim.schedule(function()
+--   vim.o.clipboard = 'unnamedplus'
+-- end)
 
 -- Enable break indent
 vim.o.breakindent = true
-
+vim.keymap.set('x', '<leader>p', '"_dp')
+vim.keymap.set('v', '<leader>y', '"+y')
 -- Save undo history
 vim.o.undofile = true
 
@@ -168,9 +191,17 @@ vim.o.confirm = true
 
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
-
--- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'dart',
+  callback = function()
+    vim.opt_local.tabstop = 2
+    vim.opt_local.shiftwidth = 2
+    vim.opt_local.softtabstop = 2
+    vim.opt_local.expandtab = true
+  end,
+})
+
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
 -- Diagnostic keymaps
@@ -461,7 +492,48 @@ require('lazy').setup({
       end, { desc = '[S]earch [N]eovim files' })
     end,
   },
+  -- flutter plugin
 
+  {
+    'akinsho/flutter-tools.nvim',
+    lazy = false,
+    ft = 'dart',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+      'stevearc/stickybuf.nvim', -- Optional, but highly recommended for better buffer management
+      'hrsh7th/cmp-nvim-lsp',
+      'hrsh7th/nvim-cmp',
+      'stevearc/dressing.nvim', -- Optional: improves the UI for selecting
+      'mfussenegger/nvim-dap', -- Required for debugging
+    },
+    config = function()
+      -- Explicitly define the LSP capabilities using the standard kickstart approach
+      local capabilities = require('cmp_nvim_lsp').default_capabilities()
+
+      require('flutter-tools').setup {
+        debugger = {
+          enabled = true,
+          run_via_dap = false,
+          -- register_configurations = function(_)
+          --   require('dap').configurations.dart = {}
+          --   require('dap.ext.vscode').load_launchjs()
+          -- end,
+        },
+        -- Explicitly pass capabilities to the Dart LSP server setup
+        lsp = {
+          capabilities = capabilities,
+          -- You can add more LSP configurations here if needed later
+        },
+        -- Example of other configuration options:
+        widget_guides = {
+          enabled = true,
+        },
+        outline = {
+          open_cmd = '30 split',
+        },
+      }
+    end,
+  },
   -- LSP Plugins
   {
     -- `lazydev` configures Lua LSP for your Neovim config, runtime and plugins
@@ -628,33 +700,76 @@ require('lazy').setup({
 
       -- Diagnostic Config
       -- See :help vim.diagnostic.Opts
+      -- vim.diagnostic.config {
+      --   severity_sort = true,
+      --   float = { border = 'rounded', source = 'always' },
+      --   underline = { severity = { min = vim.diagnostic.severity.WARN,}, },
+      --   signs = vim.g.have_nerd_font and {
+      --     text = {
+      --       [vim.diagnostic.severity.ERROR] = '󰅚 ',
+      --       [vim.diagnostic.severity.WARN] = '󰀪 ',
+      --       [vim.diagnostic.severity.INFO] = '󰋽 ',
+      --       [vim.diagnostic.severity.HINT] = '󰌶 ',
+      --     },
+      --   } or {},
+      --   virtual_text = {
+      --     source = 'if_many',
+      --     spacing = 2,
+      --     format = function(diagnostic)
+      --       local diagnostic_message = {
+      --         [vim.diagnostic.severity.ERROR] = diagnostic.message,
+      --         [vim.diagnostic.severity.WARN] = diagnostic.message,
+      --         [vim.diagnostic.severity.INFO] = diagnostic.message,
+      --         [vim.diagnostic.severity.HINT] = diagnostic.message,
+      --       }
+      --       return diagnostic_message[diagnostic.severity]
+      --     end,
+      --   },
+      -- }
+      --
       vim.diagnostic.config {
         severity_sort = true,
-        float = { border = 'rounded', source = 'if_many' },
-        underline = { severity = vim.diagnostic.severity.ERROR },
-        signs = vim.g.have_nerd_font and {
-          text = {
-            [vim.diagnostic.severity.ERROR] = '󰅚 ',
-            [vim.diagnostic.severity.WARN] = '󰀪 ',
-            [vim.diagnostic.severity.INFO] = '󰋽 ',
-            [vim.diagnostic.severity.HINT] = '󰌶 ',
-          },
-        } or {},
-        virtual_text = {
-          source = 'if_many',
-          spacing = 2,
-          format = function(diagnostic)
-            local diagnostic_message = {
-              [vim.diagnostic.severity.ERROR] = diagnostic.message,
-              [vim.diagnostic.severity.WARN] = diagnostic.message,
-              [vim.diagnostic.severity.INFO] = diagnostic.message,
-              [vim.diagnostic.severity.HINT] = diagnostic.message,
-            }
-            return diagnostic_message[diagnostic.severity]
-          end,
+
+        -- 🪟 floating error window
+        float = {
+          border = 'rounded',
+          source = 'always',
         },
+
+        -- 🔴 underline errors + warnings
+        underline = {
+          severity = {
+            min = vim.diagnostic.severity.WARN,
+          },
+        },
+
+        -- 🚨 gutter signs (fallback safe)
+        signs = {
+          text = {
+            [vim.diagnostic.severity.ERROR] = '󰅚',
+            [vim.diagnostic.severity.WARN] = '󰀪',
+            [vim.diagnostic.severity.INFO] = '󰋽',
+            [vim.diagnostic.severity.HINT] = '󰌶',
+          },
+        },
+
+        -- 💬 inline diagnostics
+        virtual_text = {
+          spacing = 4,
+          prefix = '●',
+          source = 'always',
+        },
+
+        update_in_insert = false,
       }
 
+      vim.api.nvim_create_autocmd('CursorHold', {
+        callback = function()
+          vim.diagnostic.open_float(nil, { focus = false, scope = 'cursor' })
+        end,
+      })
+
+      --
       -- LSP servers and clients are able to communicate to each other what features they support.
       --  By default, Neovim doesn't support everything that is in the LSP specification.
       --  When you add blink.cmp, luasnip, etc. Neovim now has *more* capabilities.
@@ -835,7 +950,7 @@ require('lazy').setup({
         -- <c-k>: Toggle signature help
         --
         -- See :h blink-cmp-config-keymap for defining your own keymap
-        preset = 'default',
+        preset = 'super-tab',
 
         -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
         --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
@@ -876,25 +991,54 @@ require('lazy').setup({
     },
   },
 
-  { -- You can easily change to a different colorscheme.
-    -- Change the name of the colorscheme plugin below, and then
-    -- change the command in the config to whatever the name of that colorscheme is.
-    --
-    -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'folke/tokyonight.nvim',
-    priority = 1000, -- Make sure to load this before all the other start plugins.
+  -- {
+  --   'rose-pine/neovim',
+  --   name = 'rose-pine',
+  --   config = function()
+  --     require('rose-pine').setup {
+  --       variant = 'auto',
+  --       dark_variant = 'main',
+  --       styles = {
+  --         bold = true,
+  --         italic = false,
+  --         transparency = false,
+  --       },
+  --     }
+  --     vim.cmd 'colorscheme rose-pine'
+  --   end,
+  -- },
+  -- { -- You can easily change to a different colorscheme.
+  --   -- Change the name of the colorscheme plugin below, and then
+  --   -- change the command in the config to whatever the name of that colorscheme is.
+  --   --
+  --   -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
+  --   'folke/tokyonight.nvim',
+  --   priority = 1000, -- Make sure to load this before all the other start plugins.
+  --   config = function()
+  --     ---@diagnostic disable-next-line: missing-fields
+  --     require('tokyonight').setup {
+  --       styles = {
+  --         comments = { italic = false }, -- Disable italics in comments
+  --       },
+  --     }
+  --
+  --     -- Load the colorscheme here.
+  --     -- Like many other themes, this one has different styles, and you could load
+  --     -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
+  --     vim.cmd.colorscheme 'tokyonight-storm'
+  --   end,
+  -- },
+  {
+    'gmr458/vscode_modern_theme.nvim',
+    lazy = false,
+    priority = 1000,
     config = function()
-      ---@diagnostic disable-next-line: missing-fields
-      require('tokyonight').setup {
-        styles = {
-          comments = { italic = false }, -- Disable italics in comments
-        },
+      require('vscode_modern').setup {
+        cursorline = true,
+        transparent_background = false,
+        nvim_tree_darker = true,
       }
-
-      -- Load the colorscheme here.
-      -- Like many other themes, this one has different styles, and you could load
-      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      vim.cmd.colorscheme 'vscode_modern'
     end,
   },
 
@@ -949,6 +1093,7 @@ require('lazy').setup({
       auto_install = true,
       highlight = {
         enable = true,
+        disable = { 'dart' },
         -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
         --  If you are experiencing weird indenting issues, add the language to
         --  the list of additional_vim_regex_highlighting and disabled languages for indent.
@@ -973,10 +1118,10 @@ require('lazy').setup({
   --  Here are some example plugins that I've included in the Kickstart repository.
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
-  -- require 'kickstart.plugins.debug',
+  require 'kickstart.plugins.debug',
   -- require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
-  -- require 'kickstart.plugins.autopairs',
+  require 'kickstart.plugins.autopairs',
   -- require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
@@ -984,7 +1129,7 @@ require('lazy').setup({
   --    This is the easiest way to modularize your config.
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- { import = 'custom.plugins' },
+  { import = 'custom.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!
